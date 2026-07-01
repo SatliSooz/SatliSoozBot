@@ -140,7 +140,7 @@ def webhook():
 @app.route("/")
 def index():
     bot.remove_webhook()
-    bot.set_webhook(url=os.getenv("RAILWAY_PUBLIC_DOMAIN", "https://your-app.up.railway.app") + "/" + TOKEN)
+    bot.set_webhook(url="https://satlisoozbot.railway.app/" + TOKEN)
     return "Webhook set!"
 
 if __name__ == "__main__":
