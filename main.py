@@ -5,7 +5,7 @@ import threading
 from flask import Flask, request
 
 # ================== تنظیمات ==================
-TOKEN = "8803927090:AAH4f6nm3Is4Po2hKgKFFN3gEDWLnqOaiE0"
+TOKEN = os.getenv("TOKEN", "8803927090:AAH4f6nm3Is4Po2hKgKFFN3gEDWLnqOaiE0")
 CHANNEL_ID = -1003997971554
 ADMIN_ID = 5044745081
 BOT_USERNAME = "SatliSoozBot"
@@ -30,7 +30,7 @@ def is_subscribed(user_id):
     except:
         return False
 
-# ====================== دریافت محتوا از ادمین ======================
+# ====================== دریافت محتوا ======================
 @bot.message_handler(content_types=['text', 'photo', 'video', 'document', 'audio', 'voice'])
 def handle_content(message):
     if message.from_user.id != ADMIN_ID:
@@ -62,7 +62,7 @@ def handle_content(message):
     link = f"https://t.me/{BOT_USERNAME}?start={unique_id}"
     bot.reply_to(message, f"✅ لینک آماده شد:\n\n{link}\n\nفایل بعد از ۱۰ ثانیه حذف می‌شود.")
 
-# ====================== Start Handler ======================
+# ====================== Start ======================
 @bot.message_handler(commands=['start'])
 def start(message):
     user_id = message.from_user.id
@@ -79,7 +79,7 @@ def start(message):
         )
         bot.send_message(
             user_id,
-            "🔴 لطفا برای استفاده از ربات و دریافت فایل:\n1️⃣ در کانال عضو شوید\n2️⃣ روی بررسی عضویت بزنید",
+            "🔴 لطفا برای استفاده از ربات:\n1️⃣ در کانال عضو شوید\n2️⃣ روی بررسی عضویت بزنید",
             reply_markup=markup
         )
         return
@@ -108,7 +108,6 @@ def send_content(user_id, unique_id):
             elif data["type"] == 'voice':
                 bot.send_voice(user_id, data["file_id"], caption=caption)
         
-        # حذف خودکار
         def auto_delete():
             time.sleep(10)
             if unique_id in files_db:
@@ -141,9 +140,9 @@ def webhook():
 @app.route("/")
 def index():
     bot.remove_webhook()
-    bot.set_webhook(url="https://YOUR-APP-NAME.onrender.com/" + TOKEN)
+    bot.set_webhook(url=os.getenv("RAILWAY_PUBLIC_DOMAIN", "https://your-app.up.railway.app") + "/" + TOKEN)
     return "Webhook set!"
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
