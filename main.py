@@ -33,7 +33,7 @@ def is_subscribed(user_id):
     except:
         return False
 
-# ====================== Start Handler (اول باید باشه) ======================
+# ====================== Start Handler ======================
 @bot.message_handler(commands=['start'])
 def start(message):
     user_id = message.from_user.id
@@ -59,18 +59,53 @@ def start(message):
         )
         return
     
-    send_content(user_id, args)
+    send_content(user_id, args, is_admin=is_admin(user_id))
+
+def send_content(user_id, unique_id, is_admin=False):
+    if unique_id not in files_db:
+        return bot.send_message(user_id, "❌ فایل یافت نشد یا منقضی شده.")
+    
+    data = files_db[unique_id]
+    
+    try:
+        if data["type"] == "text":
+            bot.send_message(user_id, data["text"])
+        else:
+            caption = data.get("caption")
+            if data["type"] == 'photo':
+                bot.send_photo(user_id, data["file_id"], caption=caption)
+            elif data["type"] == 'video':
+                bot.send_video(user_id, data["file_id"], caption=caption)
+            elif data["type"] == 'document':
+                bot.send_document(user_id, data["file_id"], caption=caption)
+            elif data["type"] == 'audio':
+                bot.send_audio(user_id, data["file_id"], caption=caption)
+            elif data["type"] == 'voice':
+                bot.send_voice(user_id, data["file_id"], caption=caption)
+        
+        # فقط برای کاربران عادی (غیر ادمین) بعد از ۱۰ ثانیه حذف شود
+        if not is_admin:
+            def auto_delete():
+                time.sleep(10)
+                if unique_id in files_db:
+                    del files_db[unique_id]
+                    try:
+                        bot.send_message(user_id, "🗑 فایل با موفقیت حذف شد.")
+                    except:
+                        pass
+            threading.Thread(target=auto_delete, daemon=True).start()
+        
+    except:
+        bot.send_message(user_id, "⚠️ خطا در ارسال فایل.")
 
 # ====================== دریافت محتوا (ادمین‌ها) ======================
 @bot.message_handler(content_types=['text', 'photo', 'video', 'document', 'audio', 'voice'])
 def handle_content(message):
-    # جلوگیری از تداخل با دستورات
     if message.text and message.text.startswith('/'):
         return
     
     if not is_admin(message.from_user.id):
         return bot.reply_to(message, "⛔ فقط ادمین‌ها می‌توانند محتوا بفرستند.")
-    
     unique_id = str(int(time.time())) + str(message.message_id)
     
     if message.content_type == 'text':
@@ -95,7 +130,7 @@ def handle_content(message):
         }
     
     link = f"https://t.me/{BOT_USERNAME}?start={unique_id}"
-    bot.reply_to(message, f"✅ لینک آماده شد:\n\n{link}\n\nفایل بعد از ۱۰ ثانیه حذف می‌شود.")
+    bot.reply_to(message, f"✅ لینک آماده شد:\n\n{link}\n\nاین لینک برای کاربران عادی یک‌بار مصرف است.")
 
 # ====================== برودکست ======================
 @bot.message_handler(commands=['broadcast'])
@@ -103,40 +138,6 @@ def broadcast(message):
     if not is_admin(message.from_user.id):
         return bot.reply_to(message, "⛔ فقط ادمین اجازه دارد!")
     bot.reply_to(message, "پیام بعدی را بفرست...")
-
-def send_content(user_id, unique_id):
-    if unique_id not in files_db:
-        return bot.send_message(user_id, "❌ فایل یافت نشد یا منقضی شده.")
-    data = files_db[unique_id]
-    
-    try:
-        if data["type"] == "text":
-            bot.send_message(user_id, data["text"])
-        else:
-            caption = data.get("caption")
-            if data["type"] == 'photo':
-                bot.send_photo(user_id, data["file_id"], caption=caption)
-            elif data["type"] == 'video':
-                bot.send_video(user_id, data["file_id"], caption=caption)
-            elif data["type"] == 'document':
-                bot.send_document(user_id, data["file_id"], caption=caption)
-            elif data["type"] == 'audio':
-                bot.send_audio(user_id, data["file_id"], caption=caption)
-            elif data["type"] == 'voice':
-                bot.send_voice(user_id, data["file_id"], caption=caption)
-        
-        def auto_delete():
-            time.sleep(10)
-            if unique_id in files_db:
-                del files_db[unique_id]
-                try:
-                    bot.send_message(user_id, "🗑 فایل با موفقیت حذف شد.")
-                except:
-                    pass
-        threading.Thread(target=auto_delete, daemon=True).start()
-        
-    except:
-        bot.send_message(user_id, "⚠️ خطا در ارسال فایل.")
 
 # ====================== Callback ======================
 @bot.callback_query_handler(func=lambda call: True)
@@ -146,7 +147,7 @@ def callback_handler(call):
         if is_subscribed(call.from_user.id):
             bot.answer_callback_query(call.id, "✅ عضویت تأیید شد!")
             bot.delete_message(call.message.chat.id, call.message.message_id)
-            send_content(call.from_user.id, unique_id)
+            send_content(call.from_user.id, unique_id, is_admin=is_admin(call.from_user.id))
         else:
             bot.answer_callback_query(call.id, "❌ هنوز عضو کانال نشده‌اید!", show_alert=True)
 
