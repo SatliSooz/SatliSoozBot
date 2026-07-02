@@ -17,7 +17,7 @@ files_db = {}
 
 # ====================== توابع کمکی ======================
 def is_admin(user_id):
-    """بررسی اینکه کاربر ادمین کانال یا صاحب ربات است"""
+    """بررسی ادمین بودن (صاحب ربات + ادمین‌های کانال)"""
     if user_id == ADMIN_ID:
         return True
     try:
@@ -33,16 +33,41 @@ def is_subscribed(user_id):
     except:
         return False
 
-# ====================== برودکست ======================
-@bot.message_handler(commands=['broadcast'])
-def broadcast(message):
-    if not is_admin(message.from_user.id):
-        return bot.reply_to(message, "⛔ فقط ادمین اجازه دارد!")
-    bot.reply_to(message, "پیام بعدی را بفرست...")
+# ====================== Start Handler (اول باید باشه) ======================
+@bot.message_handler(commands=['start'])
+def start(message):
+    user_id = message.from_user.id
+    args = message.text.split()[1] if len(message.text.split()) > 1 else None
+    
+    if not args:
+        return bot.send_message(user_id, "👋 سلام! به ربات سطلی سوز خوش آمدید.")
+    
+    # Force Subscribe
+    if not is_subscribed(user_id):
+        markup = telebot.types.InlineKeyboardMarkup(row_width=1)
+        markup.add(
+            telebot.types.InlineKeyboardButton("سطلی سوز 🔥", url="https://t.me/+4UNzVMqnR0s2ODc0"),
+            telebot.types.InlineKeyboardButton("بررسی عضویت ✅", callback_data=f"check_{args}")
+        )
+        bot.send_message(
+            user_id,
+            "🔴 لطفا برای استفاده از ربات و دریافت فایل:\n"
+            "1️⃣ در کانال های ما عضو شوید\n"
+            "2️⃣ سپس روی دکمه ی بررسی عضویت کلیک کنید\n\n"
+            "@SatliSooz",
+            reply_markup=markup
+        )
+        return
+    
+    send_content(user_id, args)
 
 # ====================== دریافت محتوا (ادمین‌ها) ======================
 @bot.message_handler(content_types=['text', 'photo', 'video', 'document', 'audio', 'voice'])
 def handle_content(message):
+    # جلوگیری از تداخل با دستورات
+    if message.text and message.text.startswith('/'):
+        return
+    
     if not is_admin(message.from_user.id):
         return bot.reply_to(message, "⛔ فقط ادمین‌ها می‌توانند محتوا بفرستند.")
     
@@ -72,39 +97,16 @@ def handle_content(message):
     link = f"https://t.me/{BOT_USERNAME}?start={unique_id}"
     bot.reply_to(message, f"✅ لینک آماده شد:\n\n{link}\n\nفایل بعد از ۱۰ ثانیه حذف می‌شود.")
 
-# ====================== Start Handler (باید قبل از handle_content باشه) ======================
-@bot.message_handler(commands=['start'])
-def start(message):
-    user_id = message.from_user.id
-    args = message.text.split()[1] if len(message.text.split()) > 1 else None
-    
-    if not args:
-        return bot.send_message(user_id, "👋 سلام! به ربات سطلی سوز خوش آمدید.")
-    
-    # Force Subscribe
-    if not is_subscribed(user_id):
-        markup = telebot.types.InlineKeyboardMarkup(row_width=1)
-        markup.add(
-            telebot.types.InlineKeyboardButton("سطلی سوز 🔥", url="https://t.me/+4UNzVMqnR0s2ODc0"),
-            telebot.types.InlineKeyboardButton("بررسی عضویت ✅", callback_data=f"check_{args}")
-        )
-        bot.send_message(
-            user_id,
-            "🔴 لطفا برای استفاده از ربات و دریافت فایل:\n"
-            "1️⃣ در کانال های ما عضو شوید\n"
-            "2️⃣ سپس روی دکمه ی بررسی عضویت کلیک کنید\n\n"
-            "@SatliSooz",
-            reply_markup=markup
-        )
-        return
-    
-    # ارسال محتوا
-    send_content(user_id, args)
+# ====================== برودکست ======================
+@bot.message_handler(commands=['broadcast'])
+def broadcast(message):
+    if not is_admin(message.from_user.id):
+        return bot.reply_to(message, "⛔ فقط ادمین اجازه دارد!")
+    bot.reply_to(message, "پیام بعدی را بفرست...")
 
 def send_content(user_id, unique_id):
     if unique_id not in files_db:
         return bot.send_message(user_id, "❌ فایل یافت نشد یا منقضی شده.")
-    
     data = files_db[unique_id]
     
     try:
