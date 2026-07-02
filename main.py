@@ -66,33 +66,44 @@ def send_content(user_id, unique_id):
     data = files_db[unique_id]
     
     try:
-        # ارسال فایل
-        if data["type"] == "text":
-            bot.send_message(user_id, data["text"])
-        else:
-            caption = data.get("caption")
-            if data["type"] == 'photo':
-                bot.send_photo(user_id, data["file_id"], caption=caption)
-            elif data["type"] == 'video':
-                bot.send_video(user_id, data["file_id"], caption=caption)
-            elif data["type"] == 'document':
-                bot.send_document(user_id, data["file_id"], caption=caption)
-            elif data["type"] == 'audio':
-                bot.send_audio(user_id, data["file_id"], caption=caption)
-            elif data["type"] == 'voice':
-                bot.send_voice(user_id, data["file_id"], caption=caption)
+        sent_msg = None
         
-        # فقط پیام ذخیره‌سازی
+        if data["type"] == "text":
+            sent_msg = bot.send_message(user_id, data["text"])
+        elif data["type"] == 'photo':
+            sent_msg = bot.send_photo(user_id, data["file_id"], caption=data.get("caption"))
+        elif data["type"] == 'video':
+            sent_msg = bot.send_video(user_id, data["file_id"], caption=data.get("caption"))
+        elif data["type"] == 'document':
+            sent_msg = bot.send_document(user_id, data["file_id"], caption=data.get("caption"))
+        elif data["type"] == 'audio':
+            sent_msg = bot.send_audio(user_id, data["file_id"], caption=data.get("caption"))
+        elif data["type"] == 'voice':
+            sent_msg = bot.send_voice(user_id, data["file_id"], caption=data.get("caption"))
+        elif data["type"] == 'animation':  # پشتیبانی از گیف
+            sent_msg = bot.send_animation(user_id, data["file_id"], caption=data.get("caption"))
+        
+        # پیام ذخیره‌سازی
         bot.send_message(
             user_id, 
             "⏳ ۱۰ ثانیه وقت دارید فایل را در Save Message خود ذخیره کنید."
         )
         
+        # حذف پیام فایل بعد از ۱۰ ثانیه
+        if sent_msg:
+            def auto_delete_msg():
+                time.sleep(10)
+                try:
+                    bot.delete_message(user_id, sent_msg.message_id)
+                except:
+                    pass
+            threading.Thread(target=auto_delete_msg, daemon=True).start()
+        
     except:
         bot.send_message(user_id, "⚠️ خطا در ارسال فایل.")
 
 # ====================== دریافت محتوا توسط ادمین ======================
-@bot.message_handler(content_types=['text', 'photo', 'video', 'document', 'audio', 'voice'])
+@bot.message_handler(content_types=['text', 'photo', 'video', 'document', 'audio', 'voice', 'animation'])
 def handle_content(message):
     if message.text and message.text.startswith('/'):
         return
@@ -106,6 +117,8 @@ def handle_content(message):
         files_db[unique_id] = {"type": "text", "text": message.text}
     else:
         file_id = None
+        content_type = message.content_type
+        
         if message.content_type == 'photo':
             file_id = message.photo[-1].file_id
         elif message.content_type == 'video':
@@ -116,9 +129,12 @@ def handle_content(message):
             file_id = message.audio.file_id
         elif message.content_type == 'voice':
             file_id = message.voice.file_id
+        elif message.content_type == 'animation':
+            file_id = message.animation.file_id
+            content_type = 'animation'
         
         files_db[unique_id] = {
-            "type": message.content_type,
+            "type": content_type,
             "file_id": file_id,
             "caption": message.caption
         }
