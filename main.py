@@ -15,14 +15,17 @@ app = Flask(__name__)
 
 files_db = {}
 
-# ====================== برودکست ======================
-@bot.message_handler(commands=['broadcast'])
-def broadcast(message):
-    if message.from_user.id != ADMIN_ID:
-        return bot.reply_to(message, "⛔ فقط ادمین اجازه دارد!")
-    bot.reply_to(message, "پیام بعدی را بفرست...")
+# ====================== توابع کمکی ======================
+def is_admin(user_id):
+    """بررسی اینکه کاربر ادمین کانال یا صاحب ربات است"""
+    if user_id == ADMIN_ID:
+        return True
+    try:
+        member = bot.get_chat_member(CHANNEL_ID, user_id)
+        return member.status in ['administrator', 'creator']
+    except:
+        return False
 
-# ====================== چک عضویت ======================
 def is_subscribed(user_id):
     try:
         member = bot.get_chat_member(CHANNEL_ID, user_id)
@@ -30,11 +33,18 @@ def is_subscribed(user_id):
     except:
         return False
 
-# ====================== دریافت محتوا (فقط ادمین) ======================
+# ====================== برودکست ======================
+@bot.message_handler(commands=['broadcast'])
+def broadcast(message):
+    if not is_admin(message.from_user.id):
+        return bot.reply_to(message, "⛔ فقط ادمین اجازه دارد!")
+    bot.reply_to(message, "پیام بعدی را بفرست...")
+
+# ====================== دریافت محتوا (ادمین‌ها) ======================
 @bot.message_handler(content_types=['text', 'photo', 'video', 'document', 'audio', 'voice'])
 def handle_content(message):
-    if message.from_user.id != ADMIN_ID:
-        return bot.reply_to(message, "⛔ فقط ادمین می‌تواند محتوا بفرستد.")
+    if not is_admin(message.from_user.id):
+        return bot.reply_to(message, "⛔ فقط ادمین‌ها می‌توانند محتوا بفرستند.")
     
     unique_id = str(int(time.time())) + str(message.message_id)
     
@@ -62,7 +72,7 @@ def handle_content(message):
     link = f"https://t.me/{BOT_USERNAME}?start={unique_id}"
     bot.reply_to(message, f"✅ لینک آماده شد:\n\n{link}\n\nفایل بعد از ۱۰ ثانیه حذف می‌شود.")
 
-# ====================== Start Handler ======================
+# ====================== Start Handler (باید قبل از handle_content باشه) ======================
 @bot.message_handler(commands=['start'])
 def start(message):
     user_id = message.from_user.id
