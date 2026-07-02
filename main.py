@@ -71,6 +71,7 @@ def start(message):
     if not args:
         return bot.send_message(user_id, "👋 سلام! به ربات سطلی سوز خوش آمدید.")
     
+    # Force Subscribe Check
     if not is_subscribed(user_id):
         markup = telebot.types.InlineKeyboardMarkup(row_width=1)
         markup.add(
@@ -79,16 +80,20 @@ def start(message):
         )
         bot.send_message(
             user_id,
-            "🔴 لطفا برای استفاده از ربات:\n1️⃣ در کانال عضو شوید\n2️⃣ روی بررسی عضویت بزنید",
+            "🔴 لطفا برای استفاده از ربات و دریافت فایل:\n"
+            "1️⃣ در کانال های ما عضو شوید\n"
+            "2️⃣ سپس روی دکمه ی بررسی عضویت کلیک کنید\n\n"
+            "@SatliSooz",
             reply_markup=markup
         )
         return
     
+    # ارسال محتوا
     send_content(user_id, args)
 
 def send_content(user_id, unique_id):
     if unique_id not in files_db:
-        return bot.send_message(user_id, "❌ فایل یافت نشد.")
+        return bot.send_message(user_id, "❌ فایل یافت نشد یا منقضی شده.")
     
     data = files_db[unique_id]
     
@@ -100,7 +105,7 @@ def send_content(user_id, unique_id):
             if data["type"] == 'photo':
                 bot.send_photo(user_id, data["file_id"], caption=caption)
             elif data["type"] == 'video':
-                bot.send_video(user_id, data["file_id"], caption=caption)
+                 bot.send_video(user_id, data["file_id"], caption=caption)
             elif data["type"] == 'document':
                 bot.send_document(user_id, data["file_id"], caption=caption)
             elif data["type"] == 'audio':
@@ -108,26 +113,31 @@ def send_content(user_id, unique_id):
             elif data["type"] == 'voice':
                 bot.send_voice(user_id, data["file_id"], caption=caption)
         
+        # حذف بعد از ۱۰ ثانیه
         def auto_delete():
             time.sleep(10)
             if unique_id in files_db:
                 del files_db[unique_id]
+                try:
+                    bot.send_message(user_id, "🗑 فایل با موفقیت حذف شد.")
+                except:
+                    pass
         threading.Thread(target=auto_delete, daemon=True).start()
         
-    except:
-        bot.send_message(user_id, "⚠️ خطا در ارسال.")
+    except Exception as e:
+        bot.send_message(user_id, "⚠️ خطا در ارسال فایل.")
 
-# ====================== Callback ======================
+# ====================== Callback (بررسی عضویت) ======================
 @bot.callback_query_handler(func=lambda call: True)
 def callback_handler(call):
     if call.data.startswith("check_"):
         unique_id = call.data.split("_")[1]
         if is_subscribed(call.from_user.id):
-            bot.answer_callback_query(call.id, "✅ عضویت تأیید شد")
+            bot.answer_callback_query(call.id, "✅ عضویت شما تأیید شد!")
             bot.delete_message(call.message.chat.id, call.message.message_id)
             send_content(call.from_user.id, unique_id)
         else:
-            bot.answer_callback_query(call.id, "❌ هنوز عضو نشده‌اید!", show_alert=True)
+            bot.answer_callback_query(call.id, "❌ هنوز عضو کانال نشده‌اید!", show_alert=True)
 
 # ====================== Webhook ======================
 @app.route('/' + TOKEN, methods=['POST'])
@@ -140,7 +150,7 @@ def webhook():
 @app.route("/")
 def index():
     bot.remove_webhook()
-    bot.set_webhook(url="https://satlisoozbot.railway.app/" + TOKEN)
+    bot.set_webhook(url="https://satlisoozbot-production.up.railway.app/" + TOKEN)
     return "Webhook set!"
 
 if __name__ == "__main__":
