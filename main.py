@@ -66,6 +66,7 @@ def send_content(user_id, unique_id):
     data = files_db[unique_id]
     
     try:
+        # ارسال فایل
         if data["type"] == "text":
             bot.send_message(user_id, data["text"])
         else:
@@ -81,19 +82,13 @@ def send_content(user_id, unique_id):
             elif data["type"] == 'voice':
                 bot.send_voice(user_id, data["file_id"], caption=caption)
         
-        # پیام هشدار ذخیره‌سازی
-        bot.send_message(user_id, "⏳ ۱۰ ثانیه وقت دارید فایل را در Save Message خود ذخیره کنید.")
+        # فقط پیام ذخیره‌سازی
+        bot.send_message(
+            user_id, 
+            "⏳ ۱۰ ثانیه وقت دارید فایل را در Save Message خود ذخیره کنید."
+        )
         
-        # تایمر ۱۰ ثانیه‌ای فقط برای نمایش پیام حذف (فایل از دیتابیس حذف نمی‌شود)
-        def notify_delete():
-            time.sleep(10)
-            try:
-                bot.send_message(user_id, "🗑 فایل از طرف ربات حذف شد (برای دریافت دوباره از لینک استفاده کنید).")
-            except:
-                pass
-        threading.Thread(target=notify_delete, daemon=True).start()
-        
-    except Exception as e:
+    except:
         bot.send_message(user_id, "⚠️ خطا در ارسال فایل.")
 
 # ====================== دریافت محتوا توسط ادمین ======================
@@ -104,6 +99,7 @@ def handle_content(message):
     
     if not is_admin(message.from_user.id):
         return bot.reply_to(message, "⛔ فقط ادمین‌ها می‌توانند محتوا بفرستند.")
+    
     unique_id = str(int(time.time())) + str(message.message_id)
     
     if message.content_type == 'text':
@@ -128,7 +124,7 @@ def handle_content(message):
         }
     
     link = f"https://t.me/{BOT_USERNAME}?start={unique_id}"
-    bot.reply_to(message, f"✅ لینک آماده شد:\n\n{link}\n\nاین لینک دائمی است و کاربران می‌توانند چندین بار از آن استفاده کنند.")
+    bot.reply_to(message, f"✅ لینک آماده شد:\n\n{link}\n\nاین لینک دائمی است.")
 
 # ====================== برودکست ======================
 @bot.message_handler(commands=['broadcast'])
