@@ -36,7 +36,6 @@ def is_subscribed(user_id):
 @bot.message_handler(commands=['start'])
 def start(message):
     user_id = message.from_user.id
-    # استخراج دقیق unique_id
     args = None
     if len(message.text.split()) > 1:
         args = message.text.split()[1].strip()
@@ -64,7 +63,7 @@ def start(message):
 
 def send_content(user_id, unique_id):
     if unique_id not in files_db:
-        return bot.send_message(user_id, "❌ فایل یافت نشد. لطفاً لینک را دوباره چک کنید.")
+        return  # هیچ پیامی نمایش داده نشود
     
     data = files_db[unique_id]
     
@@ -103,7 +102,7 @@ def send_content(user_id, unique_id):
             threading.Thread(target=auto_delete_msg, daemon=True).start()
         
     except:
-        bot.send_message(user_id, "⚠️ خطا در ارسال فایل.")
+        pass  # هیچ پیامی در صورت خطا ارسال نشود
 
 # ====================== دریافت محتوا توسط ادمین ======================
 @bot.message_handler(content_types=['text', 'photo', 'video', 'document', 'audio', 'voice', 'animation'])
@@ -145,18 +144,11 @@ def handle_content(message):
     link = f"https://t.me/{BOT_USERNAME}?start={unique_id}"
     bot.reply_to(message, f"✅ لینک آماده شد:\n\n{link}\n\nاین لینک دائمی است.")
 
-# ====================== برودکست ======================
-@bot.message_handler(commands=['broadcast'])
-def broadcast(message):
-    if not is_admin(message.from_user.id):
-        return bot.reply_to(message, "⛔ فقط ادمین اجازه دارد!")
-    bot.reply_to(message, "پیام بعدی را بفرست...")
-
 # ====================== Callback ======================
 @bot.callback_query_handler(func=lambda call: True)
 def callback_handler(call):
     if call.data.startswith("check_"):
-        unique_id = call.data.split("_", 1)[1]  # بهبود استخراج
+        unique_id = call.data.split("_", 1)[1]
         if is_subscribed(call.from_user.id):
             bot.answer_callback_query(call.id, "✅ عضویت تأیید شد!")
             bot.delete_message(call.message.chat.id, call.message.message_id)
