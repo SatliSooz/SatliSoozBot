@@ -17,7 +17,6 @@ files_db = {}
 
 # ====================== توابع کمکی ======================
 def is_admin(user_id):
-    """بررسی ادمین بودن (صاحب ربات + ادمین‌های کانال)"""
     if user_id == ADMIN_ID:
         return True
     try:
@@ -42,7 +41,6 @@ def start(message):
     if not args:
         return bot.send_message(user_id, "👋 سلام! به ربات سطلی سوز خوش آمدید.")
     
-    # Force Subscribe
     if not is_subscribed(user_id):
         markup = telebot.types.InlineKeyboardMarkup(row_width=1)
         markup.add(
@@ -59,9 +57,9 @@ def start(message):
         )
         return
     
-    send_content(user_id, args, is_admin=is_admin(user_id))
+    send_content(user_id, args)
 
-def send_content(user_id, unique_id, is_admin=False):
+def send_content(user_id, unique_id):
     if unique_id not in files_db:
         return bot.send_message(user_id, "❌ فایل یافت نشد یا منقضی شده.")
     
@@ -83,22 +81,22 @@ def send_content(user_id, unique_id, is_admin=False):
             elif data["type"] == 'voice':
                 bot.send_voice(user_id, data["file_id"], caption=caption)
         
-        # فقط برای کاربران عادی (غیر ادمین) بعد از ۱۰ ثانیه حذف شود
-        if not is_admin:
-            def auto_delete():
-                time.sleep(10)
-                if unique_id in files_db:
-                    del files_db[unique_id]
-                    try:
-                        bot.send_message(user_id, "🗑 فایل با موفقیت حذف شد.")
-                    except:
-                        pass
-            threading.Thread(target=auto_delete, daemon=True).start()
+        # پیام هشدار ذخیره‌سازی
+        bot.send_message(user_id, "⏳ ۱۰ ثانیه وقت دارید فایل را در Save Message خود ذخیره کنید.")
         
-    except:
+        # تایمر ۱۰ ثانیه‌ای فقط برای نمایش پیام حذف (فایل از دیتابیس حذف نمی‌شود)
+        def notify_delete():
+            time.sleep(10)
+            try:
+                bot.send_message(user_id, "🗑 فایل از طرف ربات حذف شد (برای دریافت دوباره از لینک استفاده کنید).")
+            except:
+                pass
+        threading.Thread(target=notify_delete, daemon=True).start()
+        
+    except Exception as e:
         bot.send_message(user_id, "⚠️ خطا در ارسال فایل.")
 
-# ====================== دریافت محتوا (ادمین‌ها) ======================
+# ====================== دریافت محتوا توسط ادمین ======================
 @bot.message_handler(content_types=['text', 'photo', 'video', 'document', 'audio', 'voice'])
 def handle_content(message):
     if message.text and message.text.startswith('/'):
@@ -130,7 +128,7 @@ def handle_content(message):
         }
     
     link = f"https://t.me/{BOT_USERNAME}?start={unique_id}"
-    bot.reply_to(message, f"✅ لینک آماده شد:\n\n{link}\n\nاین لینک برای کاربران عادی یک‌بار مصرف است.")
+    bot.reply_to(message, f"✅ لینک آماده شد:\n\n{link}\n\nاین لینک دائمی است و کاربران می‌توانند چندین بار از آن استفاده کنند.")
 
 # ====================== برودکست ======================
 @bot.message_handler(commands=['broadcast'])
@@ -147,7 +145,7 @@ def callback_handler(call):
         if is_subscribed(call.from_user.id):
             bot.answer_callback_query(call.id, "✅ عضویت تأیید شد!")
             bot.delete_message(call.message.chat.id, call.message.message_id)
-            send_content(call.from_user.id, unique_id, is_admin=is_admin(call.from_user.id))
+            send_content(call.from_user.id, unique_id)
         else:
             bot.answer_callback_query(call.id, "❌ هنوز عضو کانال نشده‌اید!", show_alert=True)
 
