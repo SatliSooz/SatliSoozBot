@@ -36,7 +36,10 @@ def is_subscribed(user_id):
 @bot.message_handler(commands=['start'])
 def start(message):
     user_id = message.from_user.id
-    args = message.text.split()[1] if len(message.text.split()) > 1 else None
+    # استخراج دقیق unique_id
+    args = None
+    if len(message.text.split()) > 1:
+        args = message.text.split()[1].strip()
     
     if not args:
         return bot.send_message(user_id, "👋 سلام! به ربات سطلی سوز خوش آمدید.")
@@ -61,7 +64,7 @@ def start(message):
 
 def send_content(user_id, unique_id):
     if unique_id not in files_db:
-        return bot.send_message(user_id, "❌ فایل یافت نشد یا منقضی شده.")
+        return bot.send_message(user_id, "❌ فایل یافت نشد. لطفاً لینک را دوباره چک کنید.")
     
     data = files_db[unique_id]
     
@@ -80,7 +83,7 @@ def send_content(user_id, unique_id):
             sent_msg = bot.send_audio(user_id, data["file_id"], caption=data.get("caption"))
         elif data["type"] == 'voice':
             sent_msg = bot.send_voice(user_id, data["file_id"], caption=data.get("caption"))
-        elif data["type"] == 'animation':  # پشتیبانی از گیف
+        elif data["type"] == 'animation':
             sent_msg = bot.send_animation(user_id, data["file_id"], caption=data.get("caption"))
         
         # پیام ذخیره‌سازی
@@ -153,7 +156,7 @@ def broadcast(message):
 @bot.callback_query_handler(func=lambda call: True)
 def callback_handler(call):
     if call.data.startswith("check_"):
-        unique_id = call.data.split("_")[1]
+        unique_id = call.data.split("_", 1)[1]  # بهبود استخراج
         if is_subscribed(call.from_user.id):
             bot.answer_callback_query(call.id, "✅ عضویت تأیید شد!")
             bot.delete_message(call.message.chat.id, call.message.message_id)
