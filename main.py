@@ -30,7 +30,7 @@ def is_subscribed(user_id):
     except:
         return False
 
-# ====================== دریافت محتوا ======================
+# ====================== دریافت محتوا (فقط ادمین) ======================
 @bot.message_handler(content_types=['text', 'photo', 'video', 'document', 'audio', 'voice'])
 def handle_content(message):
     if message.from_user.id != ADMIN_ID:
@@ -62,7 +62,7 @@ def handle_content(message):
     link = f"https://t.me/{BOT_USERNAME}?start={unique_id}"
     bot.reply_to(message, f"✅ لینک آماده شد:\n\n{link}\n\nفایل بعد از ۱۰ ثانیه حذف می‌شود.")
 
-# ====================== Start ======================
+# ====================== Start Handler ======================
 @bot.message_handler(commands=['start'])
 def start(message):
     user_id = message.from_user.id
@@ -71,7 +71,7 @@ def start(message):
     if not args:
         return bot.send_message(user_id, "👋 سلام! به ربات سطلی سوز خوش آمدید.")
     
-    # Force Subscribe Check
+    # Force Subscribe
     if not is_subscribed(user_id):
         markup = telebot.types.InlineKeyboardMarkup(row_width=1)
         markup.add(
@@ -105,7 +105,7 @@ def send_content(user_id, unique_id):
             if data["type"] == 'photo':
                 bot.send_photo(user_id, data["file_id"], caption=caption)
             elif data["type"] == 'video':
-                 bot.send_video(user_id, data["file_id"], caption=caption)
+                bot.send_video(user_id, data["file_id"], caption=caption)
             elif data["type"] == 'document':
                 bot.send_document(user_id, data["file_id"], caption=caption)
             elif data["type"] == 'audio':
@@ -113,7 +113,6 @@ def send_content(user_id, unique_id):
             elif data["type"] == 'voice':
                 bot.send_voice(user_id, data["file_id"], caption=caption)
         
-        # حذف بعد از ۱۰ ثانیه
         def auto_delete():
             time.sleep(10)
             if unique_id in files_db:
@@ -124,16 +123,16 @@ def send_content(user_id, unique_id):
                     pass
         threading.Thread(target=auto_delete, daemon=True).start()
         
-    except Exception as e:
+    except:
         bot.send_message(user_id, "⚠️ خطا در ارسال فایل.")
 
-# ====================== Callback (بررسی عضویت) ======================
+# ====================== Callback ======================
 @bot.callback_query_handler(func=lambda call: True)
 def callback_handler(call):
     if call.data.startswith("check_"):
         unique_id = call.data.split("_")[1]
         if is_subscribed(call.from_user.id):
-            bot.answer_callback_query(call.id, "✅ عضویت شما تأیید شد!")
+            bot.answer_callback_query(call.id, "✅ عضویت تأیید شد!")
             bot.delete_message(call.message.chat.id, call.message.message_id)
             send_content(call.from_user.id, unique_id)
         else:
