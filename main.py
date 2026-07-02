@@ -32,22 +32,26 @@ def is_subscribed(user_id):
     except:
         return False
 
-# ====================== Start Handler ======================
+# ====================== Start Handler (بهبود یافته) ======================
 @bot.message_handler(commands=['start'])
 def start(message):
     user_id = message.from_user.id
-    args = None
-    if len(message.text.split()) > 1:
-        args = message.text.split()[1].strip()
     
-    if not args:
+    # استخراج دقیق unique_id از deep link
+    unique_id = None
+    if len(message.text.split()) > 1:
+        unique_id = message.text.split()[1].strip()
+    elif message.text.startswith('/start '):
+        unique_id = message.text[7:].strip()  # بعد از /start 
+    
+    if not unique_id:
         return bot.send_message(user_id, "👋 سلام! به ربات سطلی سوز خوش آمدید.")
     
     if not is_subscribed(user_id):
         markup = telebot.types.InlineKeyboardMarkup(row_width=1)
         markup.add(
             telebot.types.InlineKeyboardButton("سطلی سوز 🔥", url="https://t.me/+4UNzVMqnR0s2ODc0"),
-            telebot.types.InlineKeyboardButton("بررسی عضویت ✅", callback_data=f"check_{args}")
+            telebot.types.InlineKeyboardButton("بررسی عضویت ✅", callback_data=f"check_{unique_id}")
         )
         bot.send_message(
             user_id,
@@ -59,11 +63,11 @@ def start(message):
         )
         return
     
-    send_content(user_id, args)
+    send_content(user_id, unique_id)
 
 def send_content(user_id, unique_id):
     if unique_id not in files_db:
-        return  # هیچ پیامی نمایش داده نشود
+        return  # هیچ پیامی ارسال نشود
     
     data = files_db[unique_id]
     
@@ -85,13 +89,11 @@ def send_content(user_id, unique_id):
         elif data["type"] == 'animation':
             sent_msg = bot.send_animation(user_id, data["file_id"], caption=data.get("caption"))
         
-        # پیام ذخیره‌سازی
         bot.send_message(
             user_id, 
             "⏳ ۱۰ ثانیه وقت دارید فایل را در Save Message خود ذخیره کنید."
         )
         
-        # حذف پیام فایل بعد از ۱۰ ثانیه
         if sent_msg:
             def auto_delete_msg():
                 time.sleep(10)
@@ -102,7 +104,7 @@ def send_content(user_id, unique_id):
             threading.Thread(target=auto_delete_msg, daemon=True).start()
         
     except:
-        pass  # هیچ پیامی در صورت خطا ارسال نشود
+        pass
 
 # ====================== دریافت محتوا توسط ادمین ======================
 @bot.message_handler(content_types=['text', 'photo', 'video', 'document', 'audio', 'voice', 'animation'])
