@@ -2,7 +2,6 @@ import telebot
 import os
 import time
 import threading
-from flask import Flask, request
 
 # ================== تنظیمات ==================
 TOKEN = os.getenv("TOKEN", "8803927090:AAH4f6nm3Is4Po2hKgKFFN3gEDWLnqOaiE0")
@@ -11,7 +10,6 @@ ADMIN_ID = 5044745081
 BOT_USERNAME = "SatliSoozBot"
 
 bot = telebot.TeleBot(TOKEN)
-app = Flask(__name__)
 
 files_db = {}
 
@@ -32,17 +30,15 @@ def is_subscribed(user_id):
     except:
         return False
 
-# ====================== Start Handler (بهبود یافته) ======================
+# ====================== Start Handler ======================
 @bot.message_handler(commands=['start'])
 def start(message):
     user_id = message.from_user.id
-    
-    # استخراج دقیق unique_id از deep link
     unique_id = None
     if len(message.text.split()) > 1:
         unique_id = message.text.split()[1].strip()
     elif message.text.startswith('/start '):
-        unique_id = message.text[7:].strip()  # بعد از /start 
+        unique_id = message.text[7:].strip()
     
     if not unique_id:
         return bot.send_message(user_id, "👋 سلام! به ربات سطلی سوز خوش آمدید.")
@@ -111,7 +107,6 @@ def send_content(user_id, unique_id):
 def handle_content(message):
     if message.text and message.text.startswith('/'):
         return
-    
     if not is_admin(message.from_user.id):
         return bot.reply_to(message, "⛔ فقط ادمین‌ها می‌توانند محتوا بفرستند.")
     
@@ -146,6 +141,13 @@ def handle_content(message):
     link = f"https://t.me/{BOT_USERNAME}?start={unique_id}"
     bot.reply_to(message, f"✅ لینک آماده شد:\n\n{link}\n\nاین لینک دائمی است.")
 
+# ====================== برودکست ======================
+@bot.message_handler(commands=['broadcast'])
+def broadcast(message):
+    if not is_admin(message.from_user.id):
+        return bot.reply_to(message, "⛔ فقط ادمین اجازه دارد!")
+    bot.reply_to(message, "پیام بعدی را بفرست...")
+
 # ====================== Callback ======================
 @bot.callback_query_handler(func=lambda call: True)
 def callback_handler(call):
@@ -158,20 +160,7 @@ def callback_handler(call):
         else:
             bot.answer_callback_query(call.id, "❌ هنوز عضو کانال نشده‌اید!", show_alert=True)
 
-# ====================== Webhook ======================
-@app.route('/' + TOKEN, methods=['POST'])
-def webhook():
-    json_str = request.get_data().decode('UTF-8')
-    update = telebot.types.Update.de_json(json_str)
-    bot.process_new_updates([update])
-    return 'OK', 200
-
-@app.route("/")
-def index():
-    bot.remove_webhook()
-    bot.set_webhook(url="https://satlisoozbot-production.up.railway.app/" + TOKEN)
-    return "Webhook set!"
-
+# ====================== اجرای Polling ======================
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8080))
-    app.run(host="0.0.0.0", port=port)
+    print("ربات با Polling شروع شد...")
+    bot.infinity_polling(none_stop=True, interval=1)
